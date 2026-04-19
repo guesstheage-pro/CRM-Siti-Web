@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM — Siti Web</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f7f6f3; --surface: #ffffff; --surface2: #f0efe9;
+      --border: rgba(0,0,0,0.10); --border-md: rgba(0,0,0,0.18);
+      --text: #1a1a18; --text2: #6b6b65; --text3: #9a9a92;
+      --radius: 10px; --radius-lg: 14px; --radius-pill: 999px;
+      --font: 'DM Sans', system-ui, sans-serif;
+      --lead-bg: #e8f4ff; --lead-text: #1a5fa8;
+      --trattativa-bg: #fff4e0; --trattativa-text: #8a5000;
+      --attivo-bg: #e5f5ec; --attivo-text: #1a6b3a;
+      --inattivo-bg: #f0efeb; --inattivo-text: #5a5a52;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #18181a; --surface: #222224; --surface2: #2c2c2e;
+        --border: rgba(255,255,255,0.08); --border-md: rgba(255,255,255,0.15);
+        --text: #f0efe9; --text2: #9a9a92; --text3: #6b6b65;
+        --lead-bg: #1a3050; --lead-text: #8bbde8;
+        --trattativa-bg: #3a2800; --trattativa-text: #f0b84a;
+        --attivo-bg: #0e3020; --attivo-text: #6dcf96;
+        --inattivo-bg: #2a2a2c; --inattivo-text: #9a9a92;
+      }
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.5; }
+    .app { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.75rem; }
+    .header-left h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+    .header-left p { font-size: 12px; color: var(--text3); margin-top: 3px; }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--border-md); background: var(--surface); color: var(--text); font-size: 13px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: background .13s, transform .1s; text-decoration: none; white-space: nowrap; }
+    .btn:hover { background: var(--surface2); }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--text); color: var(--bg); border-color: transparent; }
+    .btn-primary:hover { opacity: 0.88; background: var(--text); }
+    .btn-danger { color: #c0392b; }
+    .btn-danger:hover { background: #fff0ef; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .75rem 1rem; }
+    .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .stat-num { font-size: 26px; font-weight: 600; line-height: 1; }
+    .stat-num.lead { color: var(--lead-text); } .stat-num.trattativa { color: var(--trattativa-text); }
+    .stat-num.attivo { color: var(--attivo-text); } .stat-num.inattivo { color: var(--text2); }
+    .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 1.25rem; }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; }
+    .search-input { width: 100%; height: 38px; padding: 0 12px 0 36px; border: 1px solid var(--border-md); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 14px; font-family: var(--font); outline: none; transition: border-color .15s; }
+    .search-input:focus { border-color: var(--text); }
+    .filters { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-btn { padding: 5px 13px; border-radius: var(--radius-pill); border: 1px solid var(--border-md); background: var(--surface); color: var(--text2); font-size: 12px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: all .13s; }
+    .filter-btn:hover { background: var(--surface2); color: var(--text); }
+    .filter-btn.active { background: var(--text); color: var(--bg); border-color: transparent; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .empty { grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--text3); font-size: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.125rem; cursor: pointer; transition: border-color .15s, box-shadow .15s; display: flex; flex-direction: column; }
+    .card:hover { border-color: var(--border-md); box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+    .card-name { font-weight: 600; font-size: 15px; }
+    .card-biz { font-size: 12px; color: var(--text2); margin-top: 1px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 600; letter-spacing: .03em; margin-bottom: 10px; }
+    .badge.lead { background: var(--lead-bg); color: var(--lead-text); }
+    .badge.trattativa { background: var(--trattativa-bg); color: var(--trattativa-text); }
+    .badge.attivo { background: var(--attivo-bg); color: var(--attivo-text); }
+    .badge.inattivo { background: var(--inattivo-bg); color: var(--inattivo-text); }
+    .card-rows { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .card-row { display: flex; align-items: flex-start; gap: 7px; font-size: 13px; color: var(--text2); }
+    .card-row a { color: var(--text2); text-decoration: none; }
+    .card-row a:hover { color: var(--text); text-decoration: underline; }
+    .card-note { font-size: 12px; color: var(--text2); font-style: italic; background: var(--surface2); border-radius: 8px; padding: 7px 10px; margin-bottom: 10px; line-height: 1.5; }
+    .card-actions { display: flex; gap: 6px; padding-top: 10px; border-top: 1px solid var(--border); margin-top: auto; }
+    .card-actions .btn { padding: 6px 11px; font-size: 12px; }
+    .spacer { flex: 1; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 1.5rem; width: 100%; max-width: 500px; border: 1px solid var(--border-md); max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .modal-header h2 { font-size: 17px; font-weight: 600; }
+    .close-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border-md); background: var(--surface); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .close-btn:hover { background: var(--surface2); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-grid .full { grid-column: 1/-1; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 12px; color: var(--text2); font-weight: 500; }
+    .field input, .field select, .field textarea { padding: 8px 10px; border: 1px solid var(--border-md); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 13px; font-family: var(--font); outline: none; transition: border-color .13s; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--text); }
+    .field textarea { height: 80px; resize: vertical; }
+    .field select { appearance: none; cursor: pointer; }
+    .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .dropdown { position: relative; }
+    .dropdown-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border-md); border-radius: var(--radius); min-width: 210px; z-index: 100; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .dropdown-menu.open { display: block; }
+    .dropdown-item { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 13px; color: var(--text); cursor: pointer; border: none; background: none; font-family: var(--font); width: 100%; text-align: left; }
+    .dropdown-item:hover { background: var(--surface2); }
+    .dropdown-sep { height: 1px; background: var(--border); margin: 4px 0; }
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500; z-index: 999; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .full { grid-column: 1; }
+      .header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <h1>🌐 CRM Siti Web</h1>
+      <p id="saveStatus">Caricamento...</p>
+    </div>
+    <div class="header-actions">
+      <div class="dropdown" id="menuDropdown">
+        <button class="btn" onclick="toggleMenu()">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          Strumenti
+        </button>
+        <div class="dropdown-menu" id="dropdownMenu">
+          <button class="dropdown-item" onclick="downloadTemplate()">📥 Scarica template Excel</button>
+          <button class="dropdown-item" onclick="document.getElementById('xlsxInput').click();closeMenu()">⬆️ Importa da Excel</button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item" onclick="exportExcel()">📤 Esporta tutti i clienti</button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item" onclick="clearAll()" style="color:#c0392b">🗑️ Cancella tutti i dati</button>
+        </div>
+      </div>
+      <input type="file" id="xlsxInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="importFile(event)">
+      <button class="btn btn-primary" onclick="openModal()">+ Nuovo cliente</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" id="search" type="text" placeholder="Cerca nome, azienda, telefono..." oninput="render()">
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" data-status="tutti" onclick="setFilter(this)">Tutti</button>
+      <button class="filter-btn" data-status="lead" onclick="setFilter(this)">Lead</button>
+      <button class="filter-btn" data-status="trattativa" onclick="setFilter(this)">In trattativa</button>
+      <button class="filter-btn" data-status="attivo" onclick="setFilter(this)">Clienti attivi</button>
+      <button class="filter-btn" data-status="inattivo" onclick="setFilter(this)">Inattivi</button>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="modal-overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Nuovo cliente</h2>
+      <button class="close-btn" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div class="form-grid">
+      <div class="field full"><label>Nome e cognome *</label><input id="fNome" placeholder="Mario Rossi"></div>
+      <div class="field"><label>Azienda</label><input id="fAzienda" placeholder="Rossi Srl"></div>
+      <div class="field"><label>Settore</label><input id="fSettore" placeholder="Ristorante, Negozio..."></div>
+      <div class="field"><label>Telefono</label><input id="fTel" type="tel" placeholder="+39 333 1234567"></div>
+      <div class="field"><label>Email</label><input id="fEmail" type="email" placeholder="mario@esempio.com"></div>
+      <div class="field full"><label>Sito web attuale</label><input id="fSito" placeholder="www.esempio.com"></div>
+      <div class="field"><label>Stato</label>
+        <select id="fStato">
+          <option value="lead">Lead</option>
+          <option value="trattativa">In trattativa</option>
+          <option value="attivo">Cliente attivo</option>
+          <option value="inattivo">Inattivo</option>
+        </select>
+      </div>
+      <div class="field"><label>Data ultimo contatto</label><input id="fData" type="date"></div>
+      <div class="field full"><label>Note</label><textarea id="fNote" placeholder="Interessato al rifacimento del sito, vuole preventivo..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="saveClient()">Salva cliente</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'crm_clienti_v1';
+
+function saveToStorage() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ clients, nextId })); updateSaveStatus(); }
+  catch(e) { console.warn('Storage non disponibile', e); }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    clients = data.clients || [];
+    nextId = data.nextId || (clients.length ? Math.max(...clients.map(c=>c.id))+1 : 1);
+    return true;
+  } catch(e) { return false; }
+}
+
+function updateSaveStatus() {
+  const n = clients.length;
+  const now = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('saveStatus').textContent = `${n} clienti · Salvato automaticamente alle ${now}`;
+}
+
+const AVATAR_PALETTES = [
+  ['#ddeeff','#1a5fa8'],['#ddf5e8','#1a6b3a'],['#fff3d6','#8a5000'],
+  ['#fde8f0','#8a1a45'],['#edecea','#4a4a42'],
+];
+function initials(n) { return n.trim().split(/\s+/).map(w=>w[0]||'').join('').toUpperCase().slice(0,2); }
+function avatarStyle(name) {
+  const i=(name.charCodeAt(0)+(name.charCodeAt(1)||0))%AVATAR_PALETTES.length;
+  return `background:${AVATAR_PALETTES[i][0]};color:${AVATAR_PALETTES[i][1]}`;
+}
+const BADGE_LABEL={lead:'Lead',trattativa:'In trattativa',attivo:'Cliente attivo',inattivo:'Inattivo'};
+
+let clients=[], nextId=1, currentFilter='tutti', editingId=null;
+
+const DEFAULT_CLIENTS=[
+  {id:1,nome:'Giulia Ferretti',azienda:'Ferretti Pasticceria',tel:'+39 347 1234567',email:'giulia@ferretti.it',sito:'www.ferrettipasticceria.it',settore:'Ristorazione',stato:'attivo',data:'2025-03-10',note:'Sito rifatto nel 2024, gestione social inclusa.'},
+  {id:2,nome:'Marco Bianchi',azienda:'Studio Bianchi Arch.',tel:'+39 333 9876543',email:'m.bianchi@studio.it',sito:'',settore:'Architettura',stato:'lead',data:'2025-04-01',note:'Vuole un sito portfolio. Contattato via LinkedIn.'},
+  {id:3,nome:'Sara Conti',azienda:'Conti Boutique',tel:'+39 320 5551234',email:'sara@contiboutique.com',sito:'www.contiboutique.com',settore:'Moda',stato:'trattativa',data:'2025-04-12',note:'Interessata a e-commerce. Preventivo inviato.'},
+  {id:4,nome:'Luca Moretti',azienda:'Moretti Idraulica',tel:'+39 366 7778899',email:'',sito:'',settore:'Artigianato',stato:'inattivo',data:'2024-11-20',note:'Non ha risposto alle ultime 2 chiamate.'},
+];
+
+function render() {
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  const filtered=clients.filter(c=>{
+    const mf=currentFilter==='tutti'||c.stato===currentFilter;
+    const ms=!q||c.nome.toLowerCase().includes(q)||(c.azienda||'').toLowerCase().includes(q)||(c.tel||'').includes(q)||(c.email||'').toLowerCase().includes(q)||(c.settore||'').toLowerCase().includes(q);
+    return mf&&ms;
+  });
+  const cnt={lead:0,trattativa:0,attivo:0,inattivo:0};
+  clients.forEach(c=>cnt[c.stato]++);
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="stat-label">Lead</div><div class="stat-num lead">${cnt.lead}</div></div>
+    <div class="stat"><div class="stat-label">In trattativa</div><div class="stat-num trattativa">${cnt.trattativa}</div></div>
+    <div class="stat"><div class="stat-label">Clienti attivi</div><div class="stat-num attivo">${cnt.attivo}</div></div>
+    <div class="stat"><div class="stat-label">Inattivi</div><div class="stat-num inattivo">${cnt.inattivo}</div></div>
+  `;
+  const grid=document.getElementById('grid');
+  if(!filtered.length){grid.innerHTML='<div class="empty">Nessun cliente trovato.</div>';return;}
+  grid.innerHTML=filtered.map(c=>{
+    const rows=[];
+    if(c.tel) rows.push(`<div class="card-row"><span>📞</span><a href="tel:${c.tel}">${c.tel}</a></div>`);
+    if(c.email) rows.push(`<div class="card-row"><span>✉️</span><a href="mailto:${c.email}">${c.email}</a></div>`);
+    if(c.sito){const url=c.sito.startsWith('http')?c.sito:'https://'+c.sito;rows.push(`<div class="card-row"><span>🌐</span><a href="${url}" target="_blank" rel="noopener">${c.sito}</a></div>`);}
+    if(c.settore) rows.push(`<div class="card-row"><span>🏷️</span>${c.settore}</div>`);
+    if(c.data) rows.push(`<div class="card-row"><span>📅</span>Ultimo contatto: ${formatDate(c.data)}</div>`);
+    const noteHTML=c.note?`<div class="card-note">${c.note.length>100?c.note.slice(0,100)+'…':c.note}</div>`:'';
+    const callBtn=c.tel?`<a class="btn" href="tel:${c.tel}" onclick="event.stopPropagation()">📞 Chiama</a>`:`<button class="btn" style="opacity:.35;cursor:default" disabled>📞 Chiama</button>`;
+    return `<div class="card" onclick="editClient(${c.id})">
+      <div class="card-top"><div class="avatar" style="${avatarStyle(c.nome)}">${initials(c.nome)}</div>
+      <div><div class="card-name">${c.nome}</div><div class="card-biz">${c.azienda||'—'}</div></div></div>
+      <span class="badge ${c.stato}">${BADGE_LABEL[c.stato]}</span>
+      <div class="card-rows">${rows.join('')}</div>${noteHTML}
+      <div class="card-actions" onclick="event.stopPropagation()">
+        ${callBtn}
+        <button class="btn" onclick="editClient(${c.id})">📝 Modifica</button>
+        <div class="spacer"></div>
+        <button class="btn btn-danger" onclick="deleteClient(event,${c.id})">🗑</button>
+      </div></div>`;
+  }).join('');
+}
+
+function formatDate(d){
+  if(!d) return '';
+  if(d.includes('/')) return d;
+  const p=d.split('-');
+  return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d;
+}
+
+function setFilter(btn){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); currentFilter=btn.dataset.status; render();
+}
+
+function openModal(c=null){
+  editingId=c?c.id:null;
+  document.getElementById('modalTitle').textContent=c?'Modifica cliente':'Nuovo cliente';
+  document.getElementById('fNome').value=c?.nome||'';
+  document.getElementById('fAzienda').value=c?.azienda||'';
+  document.getElementById('fTel').value=c?.tel||'';
+  document.getElementById('fEmail').value=c?.email||'';
+  document.getElementById('fSito').value=c?.sito||'';
+  document.getElementById('fSettore').value=c?.settore||'';
+  document.getElementById('fStato').value=c?.stato||'lead';
+  document.getElementById('fData').value=c?.data||'';
+  document.getElementById('fNote').value=c?.note||'';
+  document.getElementById('overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('fNome').focus(),80);
+}
+function closeModal(){document.getElementById('overlay').classList.remove('open');}
+function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
+function editClient(id){openModal(clients.find(c=>c.id===id));}
+
+function deleteClient(e,id){
+  e.stopPropagation();
+  const c=clients.find(x=>x.id===id);
+  if(!confirm(`Eliminare "${c.nome}"?`)) return;
+  clients=clients.filter(c=>c.id!==id);
+  saveToStorage(); render(); showToast('Cliente eliminato');
+}
+
+function saveClient(){
+  const nome=document.getElementById('fNome').value.trim();
+  if(!nome){document.getElementById('fNome').focus();return;}
+  const obj={
+    id:editingId||nextId++, nome,
+    azienda:document.getElementById('fAzienda').value.trim(),
+    tel:document.getElementById('fTel').value.trim(),
+    email:document.getElementById('fEmail').value.trim(),
+    sito:document.getElementById('fSito').value.trim(),
+    settore:document.getElementById('fSettore').value.trim(),
+    stato:document.getElementById('fStato').value,
+    data:document.getElementById('fData').value,
+    note:document.getElementById('fNote').value.trim(),
+  };
+  if(editingId){clients=clients.map(c=>c.id===editingId?obj:c);showToast('Cliente aggiornato');}
+  else{clients.push(obj);showToast('Cliente aggiunto');}
+  saveToStorage(); closeModal(); render();
+}
+
+function importFile(event){
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+    if(rows.length<2){alert('File vuoto o non valido.');return;}
+    const headers=rows[0].map(h=>String(h).toLowerCase().trim());
+    const col=(...keys)=>headers.findIndex(h=>keys.some(k=>h.includes(k)));
+    const map={
+      nome:col('nome','name'), azienda:col('aziend','compan','societ'),
+      tel:col('tel','phone','cell'), email:col('email','mail'),
+      sito:col('sito','web','url'), settore:col('sett','sector','categ'),
+      stato:col('stato','status'), data:col('data','date'),
+      note:col('note','desc','comment'),
+    };
+    // Trova prima riga dati reali (salta descrizioni ed esempi del template)
+    let dataStart=1;
+    for(let i=1;i<Math.min(rows.length,6);i++){
+      const first=String(rows[i][0]||'').toLowerCase();
+      if(first.includes('▼')||first.includes('inizia')){dataStart=i+1;break;}
+      if(first.includes('nome e cognome')||first.includes('obbligator')){dataStart=i+1;continue;}
+    }
+    let count=0;
+    for(let i=dataStart;i<rows.length;i++){
+      const r=rows[i];
+      const nome=map.nome>=0?String(r[map.nome]||'').trim():'';
+      if(!nome) continue;
+      const rawStato=map.stato>=0?String(r[map.stato]||'').toLowerCase():'';
+      let stato='lead';
+      if(rawStato.includes('attiv')) stato='attivo';
+      else if(rawStato.includes('tratt')) stato='trattativa';
+      else if(rawStato.includes('inatt')) stato='inattivo';
+      clients.push({
+        id:nextId++,nome,
+        azienda:map.azienda>=0?String(r[map.azienda]||'').trim():'',
+        tel:map.tel>=0?String(r[map.tel]||'').trim():'',
+        email:map.email>=0?String(r[map.email]||'').trim():'',
+        sito:map.sito>=0?String(r[map.sito]||'').trim():'',
+        settore:map.settore>=0?String(r[map.settore]||'').trim():'',
+        stato,
+        data:map.data>=0?String(r[map.data]||'').trim():'',
+        note:map.note>=0?String(r[map.note]||'').trim():'',
+      });
+      count++;
+    }
+    event.target.value='';
+    saveToStorage(); render(); showToast(`Importati ${count} clienti!`);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function exportExcel(){
+  closeMenu();
+  const rows=[['Nome','Azienda','Telefono','Email','Sito web','Settore','Stato','Data ultimo contatto','Note']];
+  clients.forEach(c=>rows.push([c.nome,c.azienda,c.tel,c.email,c.sito,c.settore,BADGE_LABEL[c.stato],c.data,c.note]));
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[22,22,18,28,24,16,18,20,40].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Clienti');
+  XLSX.writeFile(wb,`crm_export_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('Esportazione completata!');
+}
+
+function downloadTemplate(){
+  closeMenu();
+  const hdrs=['Nome','Azienda','Telefono','Email','Sito web attuale','Settore','Stato','Data ultimo contatto','Note'];
+  const desc=['Nome e cognome *','Ragione sociale','es. +39 333 1234567','email@esempio.com','www.esempio.com','es. Ristorante','Lead / In trattativa / Cliente attivo / Inattivo','GG/MM/AAAA','Testo libero'];
+  const ex1=['Mario Rossi','Rossi Trattoria','+39 347 1234567','mario@rossitrattoria.it','www.rossitrattoria.it','Ristorazione','Lead','15/04/2025','Interessato a sito con menù online.'];
+  const ex2=['Sara Conti','Conti Boutique Srl','+39 320 9988776','sara@contiboutique.com','www.contiboutique.com','Moda','In trattativa','10/04/2025','Vuole e-commerce. Preventivo inviato.'];
+  const sep=['▼ INIZIA A COMPILARE DA QUESTA RIGA ▼'];
+  const ws=XLSX.utils.aoa_to_sheet([hdrs,desc,ex1,ex2,sep]);
+  ws['!cols']=[22,22,20,28,26,16,22,20,38].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Clienti');
+  // Sheet istruzioni
+  const istr=[
+    ['COLONNA','COME COMPILARLA'],
+    ['Nome','Obbligatorio. Nome e cognome (es. Mario Rossi)'],
+    ['Azienda','Nome azienda o attività. Lasciare vuoto se privato.'],
+    ['Telefono','Con prefisso internazionale: +39 333 1234567'],
+    ['Email','Indirizzo email valido'],
+    ['Sito web attuale','URL del sito esistente. Vuoto se non ce l\'ha.'],
+    ['Settore','Categoria: Ristorante, Negozio, Studio, Artigianato, ecc.'],
+    ['Stato','Esattamente uno tra:\nLead\nIn trattativa\nCliente attivo\nInattivo'],
+    ['Data ultimo contatto','Formato GG/MM/AAAA (es. 15/04/2025)'],
+    ['Note','Testo libero: accordi, prossimi passi, budget, ecc.'],
+  ];
+  const wi=XLSX.utils.aoa_to_sheet(istr);
+  wi['!cols']=[{wch:22},{wch:60}];
+  XLSX.utils.book_append_sheet(wb,wi,'Istruzioni');
+  XLSX.writeFile(wb,'crm_template.xlsx');
+  showToast('Template scaricato!');
+}
+
+function clearAll(){
+  closeMenu();
+  if(!confirm('Sei sicuro? Tutti i dati verranno cancellati definitivamente.')) return;
+  clients=[]; nextId=1; saveToStorage(); render(); showToast('Dati cancellati');
+}
+
+function toggleMenu(){document.getElementById('dropdownMenu').classList.toggle('open');}
+function closeMenu(){document.getElementById('dropdownMenu').classList.remove('open');}
+document.addEventListener('click',e=>{if(!document.getElementById('menuDropdown').contains(e.target))closeMenu();});
+
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeModal();
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter') saveClient();
+});
+
+// INIT
+if(!loadFromStorage()){clients=DEFAULT_CLIENTS;nextId=5;saveToStorage();}
+render();
+updateSaveStatus();
+</script>
+</body>
+</html>
